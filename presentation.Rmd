@@ -1,0 +1,233 @@
+---
+title: "Asssignment2 of 615"
+author: "Clare Tang"
+date: "2021/10/7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library("tidyverse")
+library("dplyr")
+library("kableExtra")
+```
+
+## Background
+
+Data is downloaded from website of gapminder,  see<https://www.gapminder.org/data/>. 
+
+**Variables chosen**
+
+- Life expectancy.\
+The average number of years a newborn child would live if current mortality patterns were to stay the same. 
+
+- Government health spending per person.\
+The average health expenditure per person that has been paid by government entities during the given year, expressed in US dollars using the average exchange rate. 
+
+**Goals**
+
+- Make data description.  
+- Tidy the datasets. 
+- Figure out the changes of spending and life expectancy in different countries. 
+
+## Data exploration
+
+**Raw data**
+
+1.Government health spending per person
+
+ - First, let us take a look at the spending data. It has spending data of 192 countries and includes data across 17 years from 1994 to 2009. 
+```{r}
+
+spending_raw <- readxl::read_xlsx("spending.xlsx")# read data
+head(spending_raw) %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+ - Make some changes to let the data shown in tidy form, with only one observation in each row to include the spending value for one country in a specific year. 
+```{r}
+# tidy data, make each row an observation
+spending <- spending_raw %>% 
+  pivot_longer(-country, names_to = "year", values_to = "spending")
+head(spending)%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+ - Let's do some simple explorations here: \
+We can look for the spending value of all countries in 1994 and reorder them in increasing value. 
+Also, we can fix the countries and obtain their spending conditions from 1994 to 2009. 
+Using group_by function, we can calculate the average spending of government per year and analyze the trends. The average spending for each countries can also be analyzed. 
+Here follows the four tables. 
+
+```{r}
+
+# look at the spending in 1994 and reorder them in increasing value
+head(filter(spending, year == 1994) %>% arrange(spending))%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+
+# look at the spending for specific countries from 1994 to 2009
+head(filter(spending, country == c("China", "United States")))%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+
+# look at the average spending per year
+s_1 <- group_by(spending, year)
+head(summarise(s_1, mean = mean(spending, na.rm = TRUE)))%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+
+# look at the average spending per country
+s_2 <- group_by(spending, country)
+head(summarise(s_2, mean = mean(spending, na.rm = TRUE)))%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+
+```
+
+
+ - We notice that there are some missing value in the data and we pick them out. For convinience, we just leave out the countries with missing value, thus we get the data of spending for 183 countries. 
+```{r}
+# count the included countries: 192
+# length(unique(spending$country))
+
+# find missing value
+head(spending[!complete.cases(spending), ])%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+c <- unique(spending[!complete.cases(spending), ]$country)# 9 countries with missing value
+left <- setdiff(unique(spending$country), c)
+```
+
+ - The following data is the final spending data will we use to analyze with the expectancy data, including spending value of 183 countries. 
+```{r}
+spending <- spending %>% filter(country %in% left)
+head(spending)%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+# length(unique(spending$country))
+```
+
+
+2.Life expectancy
+
+ - Similarly, let us take a look at the expectancy data. It has expectancy data of 195 countries and includes data across 302 years from 1799 to 2099. 
+```{r}
+
+expectancy_raw <- readxl::read_xlsx("expectancy.xlsx")
+head(expectancy_raw)%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+
+# dim(expectancy_raw)
+```
+
+ - Make some changes to let the data shown in tidy form, with only one observation in each row to include the expectancy value for one country in a specific year. 
+```{r}
+# tidy data, make each row an observation
+expectancy <- expectancy_raw %>% 
+  pivot_longer(-country, names_to = "year", values_to = "expectancy")
+head(expectancy)%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+```
+
+ - We notice that there are more countries recorded in the expectancy data and we merge these two data according to the spending data we just figured out. (There is no missing value in the expectancy data, which makes sense because it is a imaginary data. )
+```{r}
+# countries included
+# length(unique(expectancy$country))# 195
+
+# merge two datasets
+df <- merge(spending, expectancy, by = c("country", "year"))
+head(df)%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F)
+
+# length(unique(df$country))# 181
+
+# colSums(is.na(df))
+
+```
+
+
+## Plotting
+
+### 1.Overall look
+
+- From the graph, we can have a sense that higher government health spending per person will lead to higher life expectancy, which makes sense to us. In the real life, government health investment can be used to do research on health food to provide people with food with lower calories, fat and sugar. Also, reduced taxed on green food can also keep citizens healthier. Public infrastructure and activities from public park to city marathon also ensure people a healther life, which all increase people expectation for longevity. 
+
+```{r, echo=FALSE, message=FALSE, results='hide'}
+p_all <- filter(df, country %in% c(unique(df$country))) %>% 
+  ggplot(mapping = aes(x = spending, y = expectancy))+
+  geom_point(aes(color = country), cex = .5)+
+  theme(legend.position = "none")+
+  geom_smooth(method = "gam", color = "black")
+plot(p_all)
+```
+
+
+### 2.Trends of spending and expectancy in one country
+
+- Trends of spending and expectancy in China
+
+```{r, include = FALSE}
+source(file = "visualization_function.R", echo = FALSE)
+```
+
+```{r}
+# Trends of spending and expectancy in China
+plotly("China")
+```
+
+- Trends of spending and expectancy in United States
+```{r}
+# Trends of spending and expectancy in United States
+plotly("United States")
+```
+
+- When comparing China and United States, we can see that there is a similar increase in life expectancy but the government health spending per person is much higher in the US. This can be partly explained by the large population in China or comparatively lower government spending on health, which is worth to be figured out. 
+
+### 3.Trends of spending and expectancy between ten countries
+
+- Put one country you are interested in and in 'trends' function and you will get the comparison of government health spending per person and life expectancy with other nine countries. Here we choose China and United States as examples. 
+
+- We use set.seed when selecting other nine countries to be compared with both in part3 and part4 to make it more comparable. 
+
+- China\
+```{r}
+trends("China")
+```
+
+
+- United States\
+```{r}
+trends("United States")
+```
+
+- When comparing China and United Stated with other countries, we should pay more attention to the limit of y-axis even though the graphs are presented in the same height. 
+
+### 4. Relationship between spending and expectancy
+
+- Put one country you are interested in and in 'rela()' function and you will get the comparison of relationship between government health spending per person and life expectancy with other nine countries.
+
+- China\
+```{r}
+rela("China")
+```
+
+- United States\
+```{r}
+rela("United States")
+```
