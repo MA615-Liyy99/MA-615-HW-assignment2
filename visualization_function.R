@@ -3,15 +3,25 @@ library("dplyr")
 library("plotly")
 # install.packages("egg")
 library("egg")
-
-
+---------------------------------
+#I added a new function to plot the relationship between spending and expectancy of each country
+plotcountry <- function(area){
+  p1 <- filter(df, country == area) %>%
+    ggplot(mapping = aes(x = spending, y = expectancy))+
+    geom_point(cex = 1)+
+    geom_line(color="blue")
+  theme(legend.position = "none")
+  plot(p1)
+}
+plotcountry("China")
+---------------------------------
 # quick look at the relationship of spending and expectancy of all countries
 
 p_all <- filter(df, country %in% c(unique(df$country))) %>% 
   ggplot(mapping = aes(x = spending, y = expectancy, color = country))+
   geom_point(cex = .5)+
   theme(legend.position = "none")
-# ggplotly(p_all)
+ #ggplotly(p_all)
 
 
 # spending and expectancy for one country
@@ -30,7 +40,11 @@ plotly <- function(area){
   # %>%  layout(title = paste("Trends of spending and expectancy in", area))
 }
 
-# plotly("China")
+ plotly("China")
+
+
+
+
 
 
 # trends of spending and expectancy within countries
@@ -58,7 +72,7 @@ trends <- function(area){
 
 }
 
-# trends("China")
+ #trends("China")
 
 rela <- function(area){
   set.seed(2)
@@ -73,4 +87,4 @@ rela <- function(area){
 }
 
 
-# rela("China")
+ rela("China")
